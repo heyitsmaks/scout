@@ -16,5 +16,12 @@ export const API_BASE =
 export function safeHttpUrl(url?: string | null): string | null {
   if (!url) return null;
   const trimmed = url.trim();
-  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+  try {
+    const parsed = new URL(trimmed);
+    return ["https:", "http:"].includes(parsed.protocol) && !parsed.username && !parsed.password
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
 }

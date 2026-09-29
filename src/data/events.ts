@@ -30,4 +30,5 @@ export interface ScoutEvent {
   is_student_deal?: boolean;
   /** false → url is a Google search link, not a confirmed event page */
   url_verified?: boolean;
+  url_source?: "grounding";
 }

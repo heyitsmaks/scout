@@ -4,19 +4,24 @@ const { token } = vi.hoisted(() => ({ token: vi.fn() }));
 vi.mock("../src/lib/supabase", () => ({ getAccessToken: token }));
 vi.mock("../src/lib/utils", () => ({ API_BASE: "https://api.example.test" }));
 import { useEventSources } from "../src/hooks/useEventSources";
-class Stream {
-  static all: Stream[] = [];
-  onmessage: ((event: { data: string }) => void) | null = null;
-  onerror: (() => void) | null = null;
-  close = vi.fn();
-  constructor(public url: string) {
-    Stream.all.push(this);
-  }
-}
+vi.mock("../src/lib/event-stream", () => ({ EventStream: Stream }));
+const { Stream } = vi.hoisted(() => ({
+  Stream: class Stream {
+    static all: Stream[] = [];
+    onmessage: ((event: { data: string }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    close = vi.fn();
+    constructor(
+      public url: string,
+      public token: string,
+    ) {
+      Stream.all.push(this);
+    }
+  },
+}));
 beforeEach(() => {
   Stream.all = [];
   token.mockReset().mockResolvedValue("test-token");
-  vi.stubGlobal("EventSource", Stream);
 });
 test("rapid picks clicks open a single stream", async () => {
   const profile = { city: "Miami", vibes: "music" };
@@ -25,6 +30,8 @@ test("rapid picks clicks open a single stream", async () => {
     await Promise.all([result.current.loadPicks(), result.current.loadPicks()]);
   });
   expect(Stream.all).toHaveLength(1);
+  expect(Stream.all[0].url).not.toContain("test-token");
+  expect(Stream.all[0].token).toBe("test-token");
   unmount();
   expect(Stream.all[0].close).toHaveBeenCalled();
 });
@@ -79,5 +86,7 @@ test("rejected auth does not leave search permanently locked", async () => {
     await result.current.runSearch("music");
   });
   expect(Stream.all).toHaveLength(1);
+  expect(Stream.all[0].url).not.toContain("test-token");
+  expect(Stream.all[0].token).toBe("test-token");
   unmount();
 });

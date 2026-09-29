@@ -7,7 +7,7 @@ export type DateRangeFilter = { from?: Date; to?: Date };
 
 function parseEventDate(date: string): number {
   const [datePart, timePart] = date.split("·").map((s) => s.trim());
-  const withoutWeekday = datePart.replace(/^[A-Za-z]+,?\s+/, "");
+  const withoutWeekday = datePart.replace(/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,?\s+/i, "");
   // Cross-year events already contain a 4-digit year — don't append current year.
   const hasYear = /\b\d{4}\b/.test(withoutWeekday);
   const str = hasYear
