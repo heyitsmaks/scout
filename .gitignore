@@ -44,3 +44,6 @@ logs/
 .idea/
 .vscode/
 .lovable/
+
+# Supabase CLI local state
+supabase/.temp/

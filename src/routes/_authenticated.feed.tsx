@@ -26,7 +26,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Skeleton } from "../components/ui/skeleton";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { safeHttpUrl } from "../lib/utils";
+import { eventLink } from "../lib/event-link";
 import {
   Select,
   SelectContent,
@@ -85,9 +85,10 @@ const RED_PILL = {
   boxShadow: "0 4px 15px rgba(255, 45, 45, 0.4)",
 };
 
-function Feed() {
+export function Feed() {
   const { session } = useAuth();
   const [detailsEvent, setDetailsEvent] = useState<ScoutEvent | null>(null);
+  const detailsLink = detailsEvent ? eventLink(detailsEvent) : null;
   const [postEvent, setPostEvent] = useState<ScoutEvent | null>(null);
   const [postOpen, setPostOpen] = useState(false);
   const [surveyEvent, setSurveyEvent] = useState<ScoutEvent | null>(null);
@@ -118,14 +119,17 @@ function Feed() {
     if (!text) return;
     setSavingVibe(true);
     try {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        const { error } = await supabase
-          .from("profiles")
-          .update({ vibes: text })
-          .eq("id", data.user.id);
-        if (error) throw error;
-      }
+      const { data, error: authError } = await supabase.auth.getUser();
+      if (authError || !data.user) throw authError ?? new Error("Please sign in again.");
+      const userId = data.user.id;
+      const { data: updated, error } = await supabase
+        .from("profiles")
+        .update({ vibes: text })
+        .eq("id", userId)
+        .select("id")
+        .single();
+      if (error || !updated) throw error ?? new Error("Profile was not updated.");
+      if (getStorageUser() !== userId) return;
       // Updates the stored profile AND notifies useFeedSync — the profile
       // object changes, useEventSources resets its streams, and the load
       // effect below re-opens the picks stream with the new preferences.
@@ -366,7 +370,7 @@ function Feed() {
   const renderGrid = (list: ScoutEvent[]) => (
     <div
       className="grid gap-4"
-      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))" }}
     >
       {list.map((event) => (
         <div key={event.id} className="relative h-full">
@@ -384,7 +388,7 @@ function Feed() {
   const loadingSkeletons = (
     <div
       className="grid gap-4"
-      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))" }}
     >
       {Array.from({ length: 3 }).map((_, i) => (
         <div
@@ -561,6 +565,7 @@ function Feed() {
                       <button
                         type="button"
                         onClick={() => {
+                          setSource("picks");
                           setVibeInput(currentVibes);
                           setEditingVibe(true);
                         }}
@@ -585,6 +590,9 @@ function Feed() {
                     Tell us what you're into and we'll find events that actually match you.
                   </p>
                   <Textarea
+                    aria-label="Your vibe"
+                    autoFocus
+                    maxLength={1000}
                     value={vibeInput}
                     onChange={(e) => setVibeInput(e.target.value)}
                     placeholder={`e.g. rooftop bars, Shakira, watch FIFA with a crowd,\njazz brunches, startup pitch nights...`}
@@ -601,6 +609,7 @@ function Feed() {
                   {editingVibe && hasVibes && (
                     <button
                       type="button"
+                      disabled={savingVibe}
                       onClick={() => setEditingVibe(false)}
                       className="mt-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
                     >
@@ -698,14 +707,14 @@ function Feed() {
                   <MapPin className="h-4 w-4" />
                   {detailsEvent.venue} · {detailsEvent.neighborhood}
                 </p>
-                {safeHttpUrl(detailsEvent.url) && (
+                {detailsLink && (
                   <a
-                    href={safeHttpUrl(detailsEvent.url)!}
+                    href={detailsLink.href}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block text-sky-600 hover:underline"
                   >
-                    {detailsEvent.url_verified !== true ? "Find event on Google →" : "View event →"}
+                    {detailsLink.verified ? "View event →" : "Find event on Google →"}
                   </a>
                 )}
               </div>

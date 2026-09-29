@@ -22,7 +22,7 @@ class RegressionTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(main, "GEMINI_API_KEY", None), patch.object(main, "_cache_get", AsyncMock(return_value=None)), patch.object(main, "extract_vibe_signals", signals), patch.object(main, "fetch_campus_events", AsyncMock(return_value=[])), patch.object(main, "_fetch_city_inventory", AsyncMock(return_value=[])):
             response = await main.vibe_stream_events(request, "Miami", [], "music")
             chunks = [chunk async for chunk in response.body_iterator]
-            self.assertIn('"complete"', ''.join(chunks))
+            self.assertIn('"error"', ''.join(chunks))
             signals.assert_not_called()
 
     async def test_exhausted_search_is_not_reported_as_empty_success(self):

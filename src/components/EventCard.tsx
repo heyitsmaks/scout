@@ -14,6 +14,7 @@ import {
 import { getStorageUser } from "../lib/user-storage";
 import { useAuth } from "../lib/auth";
 import type { ScoutEvent, EventCategory } from "../data/events";
+import { eventLink } from "../lib/event-link";
 
 const categoryColorMap: Record<EventCategory, string> = {
   "Tech & Startups": "bg-sky-100 text-sky-800 border-sky-200",
@@ -91,7 +92,7 @@ export function EventCard({ event, onViewDetails, onCreatePost, onAttended }: Ev
                 Student Deal
               </Badge>
             )}
-            {event.url_verified !== true && (
+            {!eventLink(event).verified && (
               <Badge
                 variant="outline"
                 className="border-amber-300 bg-amber-50 text-[11px] font-medium text-amber-700"

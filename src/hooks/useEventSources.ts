@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { EventStream } from "../lib/event-stream";
 import { API_BASE } from "../lib/utils";
 import { getAccessToken } from "../lib/supabase";
 import type { ScoutEvent } from "../data/events";
@@ -33,7 +34,7 @@ export function useEventSources(profile: Profile | null) {
   const [major, setMajor] = useState<SourceState>(EMPTY);
   const [search, setSearch] = useState<SourceState>(EMPTY);
 
-  const esRef = useRef<Record<SourceTab, EventSource | null>>({
+  const esRef = useRef<Record<SourceTab, EventStream | null>>({
     picks: null,
     major: null,
     search: null,
@@ -60,6 +61,7 @@ export function useEventSources(profile: Profile | null) {
     (
       tab: SourceTab,
       url: string,
+      token: string,
       setState: React.Dispatch<React.SetStateAction<SourceState>>,
       errorMessage: string,
     ) => {
@@ -67,7 +69,7 @@ export function useEventSources(profile: Profile | null) {
       statusRef.current[tab] = { loading: true, loaded: false };
       setState({ events: [], loading: true, loaded: false, error: null });
 
-      const es = new EventSource(url);
+      const es = new EventStream(url, token);
       esRef.current[tab] = es;
 
       es.onmessage = (e) => {
@@ -88,8 +90,7 @@ export function useEventSources(profile: Profile | null) {
             events: prev.events,
             loading: false,
             loaded: true,
-            // Partial results beat an error banner; only surface the error
-            // when nothing streamed (same policy as onerror below).
+            // Keep partial results and expose the failure for manual retry.
             error: (typeof payload.message === "string" && payload.message) || errorMessage,
           }));
           closeStream(tab);
@@ -184,11 +185,11 @@ export function useEventSources(profile: Profile | null) {
       for (const interest of profile?.interests ?? []) params.append("interests", interest);
       if (profile?.university) params.append("university", profile.university);
       if (profile?.major) params.append("major", profile.major);
-      if (token) params.append("access_token", token);
 
       openStream(
         "picks",
         `${API_BASE}/api/events/vibe/stream?${params}`,
+        token,
         setPicks,
         "Couldn't load your picks. Try again.",
       );
@@ -225,11 +226,11 @@ export function useEventSources(profile: Profile | null) {
         radius: String(radius),
       });
       if (profile?.university) params.append("university", profile.university);
-      if (token) params.append("access_token", token);
 
       openStream(
         "major",
         `${API_BASE}/api/events/major/stream?${params}`,
+        token,
         setMajor,
         "Couldn't load major events. Try again.",
       );
@@ -258,11 +259,11 @@ export function useEventSources(profile: Profile | null) {
         query: trimmed,
         radius: String(radius),
       });
-      if (token) params.append("access_token", token);
 
       openStream(
         "search",
         `${API_BASE}/api/events/search/stream?${params}`,
+        token,
         setSearch,
         "Search failed. Try again.",
       );
