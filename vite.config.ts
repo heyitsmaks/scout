@@ -7,6 +7,7 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { sentryTanstackStart } from "@sentry/tanstackstart-react/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { assertBrowserSafeEnvironment } from "./src/lib/browser-key-safety";
 
 export default defineConfig({
   tanstackStart: {
@@ -15,6 +16,12 @@ export default defineConfig({
     server: { entry: "server" },
   },
   plugins: [
+    {
+      name: "scout-browser-key-safety",
+      configResolved(config) {
+        assertBrowserSafeEnvironment(config.env);
+      },
+    },
     sentryTanstackStart({
       // No SENTRY_AUTH_TOKEN configured yet, so skip source map upload.
       sourcemaps: { disable: true },
